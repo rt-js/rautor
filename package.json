@@ -1,0 +1,32 @@
+{
+  "name": "rautor",
+  "version": "1.0.0",
+  "author": "aquapi",
+  "license": "MIT",
+  "keywords": [
+    "small",
+    "fast",
+    "tree",
+    "router"
+  ],
+  "description": "A small, fast compiler stack for web frameworks",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "scripts": {
+    "build:test": "bun scripts/build.ts && bun test",
+    "build:publish": "bun scripts/publish.ts",
+    "lint": "eslint ./src",
+    "lint:fix": "eslint ./src --fix"
+  },
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "latest",
+    "@types/bun": "latest",
+    "eslint": "latest",
+    "eslint-plugin-jsdoc": "latest",
+    "mitata": "latest",
+    "tsx": "^4.16.2",
+    "typescript": "latest",
+    "typescript-eslint": "latest"
+  }
+}
