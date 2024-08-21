@@ -25,6 +25,18 @@ const suites = [
   },
 
   {
+    name: 'Enum schema',
+    schema: {
+      enum: ['a', 'b', 'c']
+    },
+    tests: [
+      { value: 'a', valid: true },
+      { value: 'd', valid: false },
+      { value: 8, valid: false }
+    ]
+  },
+
+  {
     name: 'Elements schema',
     schema: {
       elements: { type: 'string' }

@@ -15,6 +15,25 @@ const suites = [
       type: 'int8'
     },
     tests: [8, 9, 15, 23]
+  },
+
+  {
+    name: 'Enum schema',
+    schema: {
+      enum: ['a', 'b', 'c']
+    },
+    tests: ['a', 'b', 'c']
+  },
+
+  {
+    name: 'Element schema',
+    schema: {
+      elements: { type: 'string' }
+    },
+    tests: [
+      ['a'],
+      ['b', 'c']
+    ]
   }
 ] satisfies Suite[];
 

@@ -98,7 +98,7 @@ export interface JTDCommonSchema {
   metadata?: any;
 }
 
-export type JTDSchema = ({} | JTDTypeSchema | JTDElementsSchema | JTDPropertiesSchema | JTDValuesSchema | JTDDiscriminatorSchema | JTDRef) & JTDCommonSchema;
+export type JTDSchema = ({} | JTDTypeSchema | JTDEnumSchema | JTDElementsSchema | JTDPropertiesSchema | JTDValuesSchema | JTDDiscriminatorSchema | JTDRef) & JTDCommonSchema;
 export type InferJTDSchema<T extends JTDSchema> = (
   T extends JTDTypeSchema ? InferJTDTypeSchema<T> :
   T extends JTDEnumSchema ? InferJTDEnumSchema<T> :
