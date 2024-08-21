@@ -316,3 +316,14 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
     // No key matches this so fallback to JSON.stringify
     builder.push(`\${JSON.stringify(${paramName})}`);
 }
+
+// eslint-disable-next-line
+export function jtd_json_create_stringify_func<const T extends RootJTDSchema>(schema: T): (o: InferRootJTDSchema<T>) => string {
+  const keys: string[] = [];
+  const values: any[] = [];
+  // @ts-expect-error Disable compileCallback
+  const state = compile_state_init(null, keys, values);
+  jtd_json_serializer_compile(schema, 'o', state);
+  // eslint-disable-next-line
+  return Function(...keys, `${state[3].join('')}return (o)=>${state[0].join('')}`)(...values);
+}
