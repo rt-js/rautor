@@ -294,15 +294,22 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
       // eslint-disable-next-line
       const props = (schema as JTDPropertiesSchema).optionalProperties!;
 
+      let needFirstPrefix = false;
+
       if (!isObjectSchema) {
         builder.push('{');
         isObjectSchema = true;
+      } else if (builder[builder.length - 1].length === 1) {
+        // Previous char was ','
+        builder.pop();
+        needFirstPrefix = true;
       }
 
       for (const objKey in props) {
         const propName = chainProperty(paramName, objKey);
+        builder.push(`\${typeof ${propName}==='undefined'?'':\`${needFirstPrefix ? ',' : ''}${escapeTemplateQuote(JSON.stringify(objKey))}:`);
+        needFirstPrefix = false;
 
-        builder.push(`\${typeof ${propName}==='undefined'?'':\`${escapeTemplateQuote(JSON.stringify(objKey))}:`);
         jtd_json_serializer_compile_template_body(props[objKey], chainProperty(paramName, objKey), state);
         builder.push(',`}');
       }

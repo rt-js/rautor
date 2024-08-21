@@ -34,6 +34,30 @@ const suites = [
       ['a'],
       ['b', 'c']
     ]
+  },
+
+  {
+    name: 'Values schema',
+    schema: {
+      values: { type: 'int8' }
+    },
+    tests: [{ a: 1, b: 2, c: 3, abc: 4 }]
+  },
+
+  {
+    name: 'Object schema',
+    schema: {
+      properties: {
+        name: { type: 'string' }
+      },
+      optionalProperties: {
+        isAdmin: { type: 'boolean' }
+      }
+    },
+    tests: [
+      { name: 'user' },
+      { name: 'admin', isAdmin: true }
+    ]
   }
 ] satisfies Suite[];
 
