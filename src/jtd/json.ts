@@ -205,6 +205,17 @@ export function jtd_json_assert_compile_conditions(schema: JTDSchema, paramName:
 }
 
 // eslint-disable-next-line
+export function jtd_json_create_assert_func<const T extends RootJTDSchema>(schema: T): (o: any) => o is InferRootJTDSchema<T> {
+  const keys: string[] = [];
+  const values: any[] = [];
+  // @ts-expect-error Disable compileCallback
+  const state = compile_state_init(null, keys, values);
+  jtd_json_assert_compile(schema, 'o', state);
+  // eslint-disable-next-line
+  return Function(...keys, `${state[3].join('')}return (o)=>${state[0].join('')}`)(...values);
+}
+
+// eslint-disable-next-line
 export function jtd_json_serializer_compile<const T extends RootJTDSchema>(schema: T, paramName: string, state: CompileState<any>): void {
   const builder = state[0];
 
@@ -251,6 +262,20 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
       return;
     }
 
+    if (key === 'elements') {
+      builder.push(`[\${${paramName}.map((o)=>\``);
+      jtd_json_serializer_compile_template_body((schema as JTDElementsSchema).elements, 'o', state);
+      builder.push('`).join()}]');
+      return;
+    }
+
+    if (key === 'values') {
+      builder.push(`{\${Object.entries(${paramName}).map((o)=>\`\${JSON.stringify(o[0])}:`);
+      jtd_json_serializer_compile_template_body((schema as JTDValuesSchema).values, 'o[1]', state);
+      builder.push('`).join()}}');
+      return;
+    }
+
     if (key === 'properties') {
       // eslint-disable-next-line
       const props = (schema as JTDPropertiesSchema).properties!;
@@ -287,15 +312,7 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
   // Replace the last ',' with '}' or ',`}' with '`}}'
   if (isObjectSchema)
     builder[builder.length - 1] = builder[builder.length - 1].length === 1 ? '}' : '`}}';
-}
-
-// eslint-disable-next-line
-export function jtd_json_create_assert_func<const T extends RootJTDSchema>(schema: T): (o: any) => o is InferRootJTDSchema<T> {
-  const keys: string[] = [];
-  const values: any[] = [];
-  // @ts-expect-error Disable compileCallback
-  const state = compile_state_init(null, keys, values);
-  jtd_json_assert_compile(schema, 'o', state);
-  // eslint-disable-next-line
-  return Function(...keys, `${state[3].join('')}return (o)=>${state[0].join('')}`)(...values);
+  else
+    // No key matches this so fallback to JSON.stringify
+    builder.push(`\${JSON.stringify(${paramName})}`);
 }

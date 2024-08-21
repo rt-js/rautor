@@ -4,7 +4,7 @@ import { App } from '../../src/app';
 const randomError = staticError();
 const msgError = dynamicError<string>();
 
-const fetch = new App()
+const app = new App()
   // Throw error randomly for testing
   .use(() => {
     if (Math.random() < 0.3) return randomError;
@@ -24,9 +24,7 @@ const fetch = new App()
   .catch(msgError, (msg, c) => {
     c.status = 404;
     return msg;
-  })
+  });
 
-  // Compile to a fetch function
-  .compile();
-
+const fetch = app.compile();
 console.log(fetch.toString());
