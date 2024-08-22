@@ -131,6 +131,7 @@ export function jtd_json_assert_compile_conditions(schema: JTDSchema, paramName:
         builder.push('&&true');
 
       if (isNullable) builder.push(')');
+      return;
     } else if (key === 'type') {
       if (isNullable) builder.push(`(${paramName}===null||`);
 
@@ -221,7 +222,7 @@ export function jtd_json_serializer_compile<const T extends RootJTDSchema>(schem
 
   if (typeof schema.definitions === 'undefined') {
     builder.push('`');
-    jtd_json_serializer_compile_template_body(schema, paramName, [builder, null]);
+    jtd_json_serializer_compile_template_body(schema, paramName, [builder, null], false);
     builder.push('`');
   }
 }
@@ -231,10 +232,10 @@ function escapeTemplateQuote(str: string): string {
 }
 
 // eslint-disable-next-line
-export function jtd_json_serializer_compile_template_body(schema: JTDSchema, paramName: string, state: JTDCompileState): void {
+export function jtd_json_serializer_compile_template_body(schema: JTDSchema, paramName: string, state: JTDCompileState, isObject: boolean): void {
   const builder = state[0];
 
-  let isObjectSchema = false;
+  let isObjectSchema = isObject;
 
   for (const key in schema) {
     if (key === 'type') {
@@ -264,14 +265,14 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
 
     if (key === 'elements') {
       builder.push(`[\${${paramName}.map((o)=>\``);
-      jtd_json_serializer_compile_template_body((schema as JTDElementsSchema).elements, 'o', state);
+      jtd_json_serializer_compile_template_body((schema as JTDElementsSchema).elements, 'o', state, false);
       builder.push('`).join()}]');
       return;
     }
 
     if (key === 'values') {
       builder.push(`{\${Object.entries(${paramName}).map((o)=>\`\${JSON.stringify(o[0])}:`);
-      jtd_json_serializer_compile_template_body((schema as JTDValuesSchema).values, 'o[1]', state);
+      jtd_json_serializer_compile_template_body((schema as JTDValuesSchema).values, 'o[1]', state, false);
       builder.push('`).join()}}');
       return;
     }
@@ -287,7 +288,7 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
 
       for (const objKey in props) {
         builder.push(`${escapeTemplateQuote(JSON.stringify(objKey))}:`);
-        jtd_json_serializer_compile_template_body(props[objKey], chainProperty(paramName, objKey), state);
+        jtd_json_serializer_compile_template_body(props[objKey], chainProperty(paramName, objKey), state, false);
         builder.push(',');
       }
     } else if (key === 'optionalProperties') {
@@ -310,7 +311,7 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
         builder.push(`\${typeof ${propName}==='undefined'?'':\`${needFirstPrefix ? ',' : ''}${escapeTemplateQuote(JSON.stringify(objKey))}:`);
         needFirstPrefix = false;
 
-        jtd_json_serializer_compile_template_body(props[objKey], chainProperty(paramName, objKey), state);
+        jtd_json_serializer_compile_template_body(props[objKey], chainProperty(paramName, objKey), state, false);
         builder.push(',`}');
       }
     }
