@@ -222,20 +222,14 @@ export function jtd_json_serializer_compile<const T extends RootJTDSchema>(schem
 
   if (typeof schema.definitions === 'undefined') {
     builder.push('`');
-    jtd_json_serializer_compile_template_body(schema, paramName, [builder, null], false);
+    jtd_json_serializer_compile_template_body(schema, paramName, [builder, null]);
     builder.push('`');
   }
 }
 
-function escapeTemplateQuote(str: string): string {
-  return str.includes('`') ? str.replace(/`/g, '\\`') : str;
-}
-
 // eslint-disable-next-line
-export function jtd_json_serializer_compile_template_body(schema: JTDSchema, paramName: string, state: JTDCompileState, isObject: boolean): void {
+export function jtd_json_serializer_compile_template_body(schema: JTDSchema, paramName: string, state: JTDCompileState): void {
   const builder = state[0];
-
-  let isObjectSchema = isObject;
 
   for (const key in schema) {
     if (key === 'type') {
@@ -265,64 +259,21 @@ export function jtd_json_serializer_compile_template_body(schema: JTDSchema, par
 
     if (key === 'elements') {
       builder.push(`[\${${paramName}.map((o)=>\``);
-      jtd_json_serializer_compile_template_body((schema as JTDElementsSchema).elements, 'o', state, false);
+      jtd_json_serializer_compile_template_body((schema as JTDElementsSchema).elements, 'o', state);
       builder.push('`).join()}]');
       return;
     }
 
     if (key === 'values') {
       builder.push(`{\${Object.entries(${paramName}).map((o)=>\`\${JSON.stringify(o[0])}:`);
-      jtd_json_serializer_compile_template_body((schema as JTDValuesSchema).values, 'o[1]', state, false);
+      jtd_json_serializer_compile_template_body((schema as JTDValuesSchema).values, 'o[1]', state);
       builder.push('`).join()}}');
       return;
     }
-
-    if (key === 'properties') {
-      // eslint-disable-next-line
-      const props = (schema as JTDPropertiesSchema).properties!;
-
-      if (!isObjectSchema) {
-        builder.push('{');
-        isObjectSchema = true;
-      }
-
-      for (const objKey in props) {
-        builder.push(`${escapeTemplateQuote(JSON.stringify(objKey))}:`);
-        jtd_json_serializer_compile_template_body(props[objKey], chainProperty(paramName, objKey), state, false);
-        builder.push(',');
-      }
-    } else if (key === 'optionalProperties') {
-      // eslint-disable-next-line
-      const props = (schema as JTDPropertiesSchema).optionalProperties!;
-
-      let needFirstPrefix = false;
-
-      if (!isObjectSchema) {
-        builder.push('{');
-        isObjectSchema = true;
-      } else if (builder[builder.length - 1].length === 1) {
-        // Previous char was ','
-        builder.pop();
-        needFirstPrefix = true;
-      }
-
-      for (const objKey in props) {
-        const propName = chainProperty(paramName, objKey);
-        builder.push(`\${typeof ${propName}==='undefined'?'':\`${needFirstPrefix ? ',' : ''}${escapeTemplateQuote(JSON.stringify(objKey))}:`);
-        needFirstPrefix = false;
-
-        jtd_json_serializer_compile_template_body(props[objKey], chainProperty(paramName, objKey), state, false);
-        builder.push(',`}');
-      }
-    }
   }
 
-  // Replace the last ',' with '}' or ',`}' with '`}}'
-  if (isObjectSchema)
-    builder[builder.length - 1] = builder[builder.length - 1].length === 1 ? '}' : '`}}';
-  else
-    // No key matches this so fallback to JSON.stringify
-    builder.push(`\${JSON.stringify(${paramName})}`);
+  // No key matches this so fallback to JSON.stringify
+  builder.push(`\${JSON.stringify(${paramName})}`);
 }
 
 // eslint-disable-next-line
