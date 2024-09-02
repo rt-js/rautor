@@ -28,3 +28,9 @@ const app = new App()
 
 const fetch = app.compile();
 console.log(fetch.toString());
+
+/**
+(r)=>{const m=r.method;if(m==='GET'){const u=r.url,s=u.indexOf('/',12),e=u.indexOf('?',s+1),p=e===-1?u.slice(s):u.substring(s,e);if(p==='/'){const x0=f1();if(Array.isArray(x0)&&x0[0]===eS)
+switch(x0[1]){case 0:{const c={status:200,headers:[]};return new Response(f2(c),c);}case 1:{const c={status:200,headers:[]};return new Response(f3(x0[2],c),c);}default:return sE;}
+return new Response(f4());}}return nF;}
+*/

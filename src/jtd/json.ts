@@ -18,10 +18,7 @@ export function jtd_json_assert_compile(schema: RootJTDSchema, paramName: string
     const refs: JTDCompileRefsMap = {};
 
     // Pre-define for reference later
-    for (const key in defs) {
-      const fnID = state[4]++;
-      refs[key] = fnID;
-    }
+    for (const key in defs) refs[key] = state[4]++;
 
     // Actually build the declarations
     const declsBuilder = state[3];
@@ -212,77 +209,6 @@ export function jtd_json_create_assert_func<const T extends RootJTDSchema>(schem
   // @ts-expect-error Disable compileCallback
   const state = compile_state_init(null, keys, values);
   jtd_json_assert_compile(schema, 'o', state);
-  // eslint-disable-next-line
-  return Function(...keys, `${state[3].join('')}return (o)=>${state[0].join('')}`)(...values);
-}
-
-// eslint-disable-next-line
-export function jtd_json_serializer_compile<const T extends RootJTDSchema>(schema: T, paramName: string, state: CompileState<any>): void {
-  const builder = state[0];
-
-  if (typeof schema.definitions === 'undefined') {
-    builder.push('`');
-    jtd_json_serializer_compile_template_body(schema, paramName, [builder, null]);
-    builder.push('`');
-  }
-}
-
-// eslint-disable-next-line
-export function jtd_json_serializer_compile_template_body(schema: JTDSchema, paramName: string, state: JTDCompileState): void {
-  const builder = state[0];
-
-  for (const key in schema) {
-    if (key === 'type') {
-      // String formats should be wrapped with quote
-      const schemaType = (schema as JTDTypeSchema).type;
-      builder.push(schemaType === 'string' || schemaType === 'timestamp'
-        ? `\${JSON.stringify(${paramName})}`
-        : `\${${paramName}}`);
-
-      return;
-    }
-
-    if (key === 'enum') {
-      // Manually checking each string and return
-      // the already stringified version is 11x faster than JSON.stringify
-      builder.push('${');
-
-      const items = (schema as JTDEnumSchema).enum;
-      for (let i = 0, len = items.length; i < len; i++) {
-        const stringifiedItem = JSON.stringify(items[i]);
-        builder.push(`${paramName}===${stringifiedItem}?"\\"${stringifiedItem.substring(1, stringifiedItem.length - 1)}\\"":`);
-      }
-
-      builder.push(`'""'}`);
-      return;
-    }
-
-    if (key === 'elements') {
-      builder.push(`[\${${paramName}.map((o)=>\``);
-      jtd_json_serializer_compile_template_body((schema as JTDElementsSchema).elements, 'o', state);
-      builder.push('`).join()}]');
-      return;
-    }
-
-    if (key === 'values') {
-      builder.push(`{\${Object.entries(${paramName}).map((o)=>\`\${JSON.stringify(o[0])}:`);
-      jtd_json_serializer_compile_template_body((schema as JTDValuesSchema).values, 'o[1]', state);
-      builder.push('`).join()}}');
-      return;
-    }
-  }
-
-  // No key matches this so fallback to JSON.stringify
-  builder.push(`\${JSON.stringify(${paramName})}`);
-}
-
-// eslint-disable-next-line
-export function jtd_json_create_stringify_func<const T extends RootJTDSchema>(schema: T): (o: InferRootJTDSchema<T>) => string {
-  const keys: string[] = [];
-  const values: any[] = [];
-  // @ts-expect-error Disable compileCallback
-  const state = compile_state_init(null, keys, values);
-  jtd_json_serializer_compile(schema, 'o', state);
   // eslint-disable-next-line
   return Function(...keys, `${state[3].join('')}return (o)=>${state[0].join('')}`)(...values);
 }
