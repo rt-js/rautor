@@ -64,6 +64,7 @@ export class App<State extends GenericState> implements MethodProto {
   // nF is the default not found response
   // sE is the default server error response
   // eS is the error symbol
+  // jH is the json header pair
   // p is the path
   // a is the params
   // l is the path length
@@ -85,7 +86,7 @@ export class App<State extends GenericState> implements MethodProto {
     request_matcher_compile(this.trees, state);
 
     // eslint-disable-next-line
-    return Function(...keys, `const nF=new Response(null,{status:404}),sE=new Response(null,{status:500});${compile_state_decls(state)}return (r)=>{${compile_state_result(state)}return nF;}`)(...values);
+    return Function(...keys, `const nF=new Response(null,{status:404}),sE=new Response(null,{status:500}),jH=['content-type','application/json'];${compile_state_decls(state)}return (r)=>{${compile_state_result(state)}return nF;}`)(...values);
   }
 
   // Method register

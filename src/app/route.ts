@@ -13,9 +13,11 @@ export type PlainRoute<State extends GenericState, Args extends any[]> = (...arg
 export interface FormattedRoute<State extends GenericState, Args extends any[], Schemas extends Record<number, RootJTDSchema> | RootJTDSchema | undefined = undefined> {
   type: 'json';
   schema?: Schemas;
-  fn: (...args: [...Args, Context & State]) => Schemas extends RootJTDSchema
-    ? InferRootJTDSchema<Schemas>
-    : Schemas extends Record<number, RootJTDSchema> ? { [K in Extract<keyof Schemas, number>]: InferRootJTDSchema<Schemas[K]> }[Extract<keyof Schemas, number>] : unknown;
+  fn: (...args: [...Args, Context & State]) => undefined extends Schemas
+    ? unknown
+    : Schemas extends RootJTDSchema
+      ? InferRootJTDSchema<Schemas>
+      : Schemas extends Record<number, RootJTDSchema> ? { [K in Extract<keyof Schemas, number>]: InferRootJTDSchema<Schemas[K]> }[Extract<keyof Schemas, number>] : unknown;
 }
 
 export interface StaticRoute {
@@ -37,7 +39,7 @@ export type ErrorRoutesData = Record<number, ErrorRoutesItem>;
 type AppCompileState = [...CompileState<RouteData>, compiledGroups: WeakMap<HandlerGroupData, [result: string, requireAsync: boolean, notRequireContext: boolean]>, handlerIdx: number];
 
 // pA: Error payload
-export function wrapRouteHandler(routeHandler: GenericRoute, addValue: AddValueCallback, previousNotRequireContext: boolean, firstArg: string | null): [string, notRequireContext: boolean] {
+export function wrapRouteHandler(routeHandler: GenericRoute, addValue: AddValueCallback, previousNotRequireContext: boolean, previousAsync: boolean, firstArg: string | null): [string, notRequireContext: boolean] {
   // Basic routes (return BodyInit)
   if (typeof routeHandler === 'function') {
     // Last handler may still requires the context
@@ -47,11 +49,15 @@ export function wrapRouteHandler(routeHandler: GenericRoute, addValue: AddValueC
     return [
       isAsync(routeHandler)
         ? notRequireContext
-          ? `${addValue(routeHandler)}(${firstArg ?? ''}).then((o)=>new Response(o${previousNotRequireContext ? '' : ',c'}))`
-          : `${addValue(routeHandler)}(${firstArg === null ? '' : `${firstArg},`}c).then((o)=>new Response(o,c))`
+          ? previousAsync
+            ? `return new Response(await ${addValue(routeHandler)}(${firstArg ?? ''})${previousNotRequireContext ? '' : ',c'});`
+            : `return ${addValue(routeHandler)}(${firstArg ?? ''}).then((o)=>new Response(o${previousNotRequireContext ? '' : ',c'}));`
+          : previousAsync
+            ? `return new Response(await ${addValue(routeHandler)}(${firstArg === null ? '' : `${firstArg},`}c),c);`
+            : `return ${addValue(routeHandler)}(${firstArg === null ? '' : `${firstArg},`}c).then((o)=>new Response(o,c));`
         : notRequireContext
-          ? `new Response(${addValue(routeHandler)}(${firstArg ?? ''})${previousNotRequireContext ? '' : ',c'})`
-          : `new Response(${addValue(routeHandler)}(${firstArg === null ? '' : `${firstArg},`}c),c)`,
+          ? `return new Response(${addValue(routeHandler)}(${firstArg ?? ''})${previousNotRequireContext ? '' : ',c'});`
+          : `return new Response(${addValue(routeHandler)}(${firstArg === null ? '' : `${firstArg},`}c),c);`,
       notRequireContext
     ];
   }
@@ -65,16 +71,15 @@ export function wrapRouteHandler(routeHandler: GenericRoute, addValue: AddValueC
 
     // No clone responses
     if (bodyValue === null)
-      return [addValue(new Response(null, routeHandler.options as ResponseInit)), true];
+      return [`return ${addValue(new Response(null, routeHandler.options as ResponseInit))};`, true];
     else if (typeof bodyValue === 'string')
-      return [addValue(new Response(new Blob([bodyValue]))), true];
+      return [`return ${addValue(new Response(new Blob([bodyValue])))};`, true];
 
     // Requires cloning
-    return [`${addValue(new Response(bodyValue as BodyInit, routeHandler.options as ResponseInit))}.clone()`, true];
+    return [`return ${addValue(new Response(bodyValue as BodyInit, routeHandler.options as ResponseInit))}.clone();`, true];
   }
 
   // JSON routes
-  // @ts-expect-error why tf is this infinite
   const fn = routeHandler.fn as ((...args: any[]) => any);
   const notRequireContext = fn.length === (firstArg === null ? 0 : 1);
 
@@ -82,12 +87,16 @@ export function wrapRouteHandler(routeHandler: GenericRoute, addValue: AddValueC
   return [
     isAsync(fn)
       ? notRequireContext
-        ? `${addValue(fn)}(${firstArg ?? ''}).then((o)=>new Response(JSON.stringify(o)${previousNotRequireContext ? '' : ',c'}))`
-        : `${addValue(fn)}(${firstArg === null ? '' : `${firstArg},`}c).then((o)=>new Response(JSON.stringify(o),c))`
+        ? previousAsync
+          ? `c.headers.push(jH);return new Response(JSON.stringify(await ${addValue(fn)}(${firstArg ?? ''})),c);`
+          : `c.headers.push(jH);return ${addValue(fn)}(${firstArg ?? ''}).then((o)=>new Response(JSON.stringify(o),c));`
+        : previousAsync
+          ? `c.headers.push(jH);return new Response(JSON.stringify(await ${addValue(fn)}(${firstArg === null ? '' : `${firstArg},`}c)),c);`
+          : `c.headers.push(jH);return ${addValue(fn)}(${firstArg === null ? '' : `${firstArg},`}c).then((o)=>new Response(JSON.stringify(o),c));`
       : notRequireContext
-        ? `new Response(JSON.stringify(${addValue(fn)}(${firstArg ?? ''}))${previousNotRequireContext ? '' : ',c'})`
-        : `new Response(JSON.stringify(${addValue(fn)}(${firstArg === null ? '' : `${firstArg},`}c)),c)`,
-    notRequireContext
+        ? `c.headers.push(jH);return new Response(JSON.stringify(${addValue(fn)}(${firstArg ?? ''})),c);`
+        : `c.headers.push(jH);return new Response(JSON.stringify(${addValue(fn)}(${firstArg === null ? '' : `${firstArg},`}c)),c);`,
+    true
   ];
 }
 
@@ -180,13 +189,13 @@ export function compileRouteData(item: RouteData, state: CompileState<RouteData>
           const curId = (state as AppCompileState)[6];
 
           if (handlerType === 1) {
-            groupResultBuilder.push(`const x${curId}=${handlerCall}${compileErrorHandlers(handlerErrorHandlers, addValue, noContext, `x${curId}`)}`);
+            groupResultBuilder.push(`const x${curId}=${handlerCall}${compileErrorHandlers(handlerErrorHandlers, addValue, noContext, isGroupAsync, `x${curId}`)}`);
             // @ts-expect-error Compiler hack
             (state as AppCompileState)[6]++;
           } else if (handlerType === 2)
             groupResultBuilder.push(handlerCall);
           else if (handlerType === 3) {
-            groupResultBuilder.push(`const x${curId}=${handlerCall}${compileErrorHandlers(handlerErrorHandlers, addValue, noContext, `x${curId}`)}${chainProperty('c', handlerData[2])}=x${curId};`);
+            groupResultBuilder.push(`const x${curId}=${handlerCall}${compileErrorHandlers(handlerErrorHandlers, addValue, noContext, isGroupAsync, `x${curId}`)}${chainProperty('c', handlerData[2])}=x${curId};`);
             // @ts-expect-error Compiler hack
             (state as AppCompileState)[6]++;
           } else
@@ -219,29 +228,29 @@ export function compileRouteData(item: RouteData, state: CompileState<RouteData>
   }
 
   // Compile route handler
-  const compiledResult = wrapRouteHandler(item[1] as GenericRoute, addValue, noContext, null);
+  const compiledResult = wrapRouteHandler(item[1] as GenericRoute, addValue, noContext, isHandlerAsync, null);
   if (!compiledResult[1] && noContext) {
     builder.push(`const c={status:200,headers:[]${isParam ? ',params:a' : ''}};`);
     noContext = false;
   }
 
-  builder.push('return ', compiledResult[0], ';');
+  builder.push(compiledResult[0]);
 
   // Close the async scope
   if (isHandlerAsync) builder.push('})();');
 }
 
 // Compile a single error handler
-export function compileErrorHandler(routeData: ErrorRoutesItem, addValue: AddValueCallback, previousNotRequireContext: boolean, resultSymbol: string): string {
-  const result = wrapRouteHandler(routeData[0], addValue, previousNotRequireContext, routeData[1] ? `${resultSymbol}[2]` : null);
+export function compileErrorHandler(routeData: ErrorRoutesItem, addValue: AddValueCallback, previousNotRequireContext: boolean, previousAsync: boolean, resultSymbol: string): string {
+  const result = wrapRouteHandler(routeData[0], addValue, previousNotRequireContext, previousAsync, routeData[1] ? `${resultSymbol}[2]` : null);
   return result[1]
     ? `return ${result[0]};`
     // Need context
-    : `{const c={status:200,headers:[]};return ${result[0]};}`;
+    : `{const c={status:200,headers:[]};${result[0]}}`;
 }
 
 // Compile multiple error handler
-export function compileErrorHandlers(routeHandlers: ErrorRoutesData, addValue: AddValueCallback, previousNotRequireContext: boolean, resultSymbol: string): string {
+export function compileErrorHandlers(routeHandlers: ErrorRoutesData, addValue: AddValueCallback, previousNotRequireContext: boolean, previousAsync: boolean, resultSymbol: string): string {
   const keys = Object.keys(routeHandlers);
   const keyLen = keys.length;
 
@@ -254,7 +263,7 @@ export function compileErrorHandlers(routeHandlers: ErrorRoutesData, addValue: A
     const key = keys[0] as unknown as number;
     return `if(Array.isArray(${resultSymbol})&&${resultSymbol}[0]===eS){if(${resultSymbol}[1]===${key})${
       // Check against only one key
-      compileErrorHandler(routeHandlers[key], addValue, previousNotRequireContext, resultSymbol)};return sE;}`;
+      compileErrorHandler(routeHandlers[key], addValue, previousNotRequireContext, previousAsync, resultSymbol)};return sE;}`;
   }
 
   // Compile multiple error handlers
@@ -262,7 +271,7 @@ export function compileErrorHandlers(routeHandlers: ErrorRoutesData, addValue: A
 
   for (let i = 0; i < keyLen; ++i) {
     const key = keys[i] as unknown as number;
-    builder.push(`case ${key}:${compileErrorHandler(routeHandlers[key], addValue, previousNotRequireContext, resultSymbol)}`);
+    builder.push(`case ${key}:${compileErrorHandler(routeHandlers[key], addValue, previousNotRequireContext, previousAsync, resultSymbol)}`);
   }
 
   builder.push('default:return sE;}');
