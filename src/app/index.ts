@@ -59,14 +59,6 @@ export class App<State extends GenericState> implements MethodProto {
     return this;
   }
 
-  /**
-   * Register a GET method handler for a path
-   */
-  public get<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
-    method_trees_register(this.trees, 'GET', path, [[this.handlers], route, this.errorHandlers]);
-    return this;
-  }
-
   // x[id] is the handler result
   // c is the request context
   // nF is the default not found response
@@ -94,5 +86,70 @@ export class App<State extends GenericState> implements MethodProto {
 
     // eslint-disable-next-line
     return Function(...keys, `const nF=new Response(null,{status:404}),sE=new Response(null,{status:500});${compile_state_decls(state)}return (r)=>{${compile_state_result(state)}return nF;}`)(...values);
+  }
+
+  // Method register
+  /**
+   * Register a GET method handler for a path
+   */
+  public get<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'GET', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
+  }
+
+  /**
+   * Register a POST method handler for a path
+   */
+  public post<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'POST', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
+  }
+
+  /**
+   * Register a PUT method handler for a path
+   */
+  public put<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'PUT', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
+  }
+
+  /**
+   * Register a DELETE method handler for a path
+   */
+  public delete<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'DELETE', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
+  }
+
+  /**
+   * Register a PATCH method handler for a path
+   */
+  public patch<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'PATCH', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
+  }
+
+  /**
+   * Register a OTPIONS method handler for a path
+   */
+  public options<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'OPTIONS', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
+  }
+
+  /**
+   * Register a TRACE method handler for a path
+   */
+  public trace<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'TRACE', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
+  }
+
+  /**
+   * Register a HEAD method handler for a path
+   */
+  public head<const Path extends string, const RouteHandler extends Route<State, []>>(path: Path, route: RouteHandler): this {
+    method_trees_register(this.trees, 'HEAD', path, [[this.handlers], route, this.errorHandlers]);
+    return this;
   }
 }

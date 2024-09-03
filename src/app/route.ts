@@ -73,8 +73,22 @@ export function wrapRouteHandler(routeHandler: GenericRoute, addValue: AddValueC
     return [`${addValue(new Response(bodyValue as BodyInit, routeHandler.options as ResponseInit))}.clone()`, true];
   }
 
-  // TODO: JSON
-  return ['', true];
+  // JSON routes
+  // @ts-expect-error why tf is this infinite
+  const fn = routeHandler.fn as ((...args: any[]) => any);
+  const notRequireContext = fn.length === (firstArg === null ? 0 : 1);
+
+  // Pass the return value to a Response object
+  return [
+    isAsync(fn)
+      ? notRequireContext
+        ? `${addValue(fn)}(${firstArg ?? ''}).then((o)=>new Response(JSON.stringify(o)${previousNotRequireContext ? '' : ',c'}))`
+        : `${addValue(fn)}(${firstArg === null ? '' : `${firstArg},`}c).then((o)=>new Response(JSON.stringify(o),c))`
+      : notRequireContext
+        ? `new Response(JSON.stringify(${addValue(fn)}(${firstArg ?? ''}))${previousNotRequireContext ? '' : ',c'})`
+        : `new Response(JSON.stringify(${addValue(fn)}(${firstArg === null ? '' : `${firstArg},`}c)),c)`,
+    notRequireContext
+  ];
 }
 
 export function compileRouteData(item: RouteData, state: CompileState<RouteData>, isParam: boolean): void {
@@ -240,8 +254,7 @@ export function compileErrorHandlers(routeHandlers: ErrorRoutesData, addValue: A
     const key = keys[0] as unknown as number;
     return `if(Array.isArray(${resultSymbol})&&${resultSymbol}[0]===eS){if(${resultSymbol}[1]===${key})${
       // Check against only one key
-      compileErrorHandler(routeHandlers[key], addValue, previousNotRequireContext, resultSymbol)
-      };return sE;}`;
+      compileErrorHandler(routeHandlers[key], addValue, previousNotRequireContext, resultSymbol)};return sE;}`;
   }
 
   // Compile multiple error handlers

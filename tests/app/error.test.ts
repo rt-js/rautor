@@ -11,8 +11,14 @@ const app = new App()
     if (Math.random() < 0.6) return msgError.create('File not found');
   })
 
-  // An example route
-  .get('/', () => 'Hi')
+  // Static route
+  .get('/', {
+    type: 'static',
+    body: 'Hi'
+  })
+
+  // Normal route
+  .get('/*', (c) => c.params[0])
 
   // Handle static error
   .catch(randomError, (c) => {
