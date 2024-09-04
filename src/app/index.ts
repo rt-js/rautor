@@ -1,4 +1,4 @@
-import { compile_state_init, compile_state_decls, compile_state_result } from '../compiler';
+import { compile_state_init, compile_state_decls, compile_state_result, compile_state_keys } from '../compiler';
 import { errorSymbol, type StaticError, type DynamicError } from '../error';
 import { method_trees_init, method_trees_register, type MethodTrees } from '../method-trees';
 import { request_matcher_compile } from '../request-matcher';
@@ -74,11 +74,10 @@ export class App<State extends GenericState> implements MethodProto {
   // r is the request object
   public compile(): (req: Request) => any {
     // Inject dependencies
-    const keys: string[] = ['eS'];
     const values: any[] = [errorSymbol];
 
     // Compile state
-    const state = compile_state_init(compileRouteData, keys, values);
+    const state = compile_state_init(compileRouteData, values);
     // @ts-expect-error Compiler hack to include other states in the compile state
     state.push(new WeakMap(), 0);
 
@@ -86,7 +85,7 @@ export class App<State extends GenericState> implements MethodProto {
     request_matcher_compile(this.trees, state);
 
     // eslint-disable-next-line
-    return Function(...keys, `const nF=new Response(null,{status:404}),sE=new Response(null,{status:500}),jH=['content-type','application/json'];${compile_state_decls(state)}return (r)=>{${compile_state_result(state)}return nF;}`)(...values);
+    return Function('eS', ...compile_state_keys(values), `const nF=new Response(null,{status:404}),sE=new Response(null,{status:500}),jH=['content-type','application/json'];${compile_state_decls(state)}return (r)=>{${compile_state_result(state)}return nF;}`)(...values);
   }
 
   // Method register

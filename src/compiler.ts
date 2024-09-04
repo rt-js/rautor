@@ -22,19 +22,24 @@ export function compile_state_init_with_add_value_cb<T>(cb: CompileCallback<T>, 
 }
 
 // eslint-disable-next-line
-export function compile_state_create_add_value_cb(keys: string[], values: any[]): AddValueCallback {
+export function compile_state_create_add_value_cb(values: any[]): AddValueCallback {
   return (val: any) => {
     // eslint-disable-next-line
-    const id = 'f' + keys.length;
-    keys.push(id);
+    const id = 'f' + values.length;
     values.push(val);
     return id;
   };
 }
 
 // eslint-disable-next-line
-export function compile_state_init<T>(cb: CompileCallback<T>, keys: string[], values: any[]): CompileState<T> {
-  return compile_state_init_with_add_value_cb(cb, compile_state_create_add_value_cb(keys, values));
+export function compile_state_init<T>(cb: CompileCallback<T>, values: any[]): CompileState<T> {
+  return compile_state_init_with_add_value_cb(cb, compile_state_create_add_value_cb(values));
+}
+
+// eslint-disable-next-line
+export function compile_state_keys(values: any[]): string[] {
+  // eslint-disable-next-line
+  return values.map((_, idx) => 'f' + idx);
 }
 
 // eslint-disable-next-line
